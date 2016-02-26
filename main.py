@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
 import time
+from pathlib import Path
 
 import requests
 
+BUILD = Path(__file__).parent.resolve() / 'build'
+
 
 def main():
+    print("Fetching article index JSON")
     articles = get_articles()
+
+    print("Writing index.html")
+    create_index(articles)
+
     total = len(articles)
     print("About to download {} articles...".format(total))
 
@@ -17,14 +25,28 @@ def main():
 def get_articles():
     resp = requests.get('https://mariadb.com/kb/en/mariadb/+descendants/?format=dash')
     resp.raise_for_status()
-    return resp.json()
+    items = resp.json()
+    return [item for item in items if item['type'] == 'article']
+
+
+def create_index(articles):
+    with open(str(BUILD / 'index.html'), 'w') as fp:
+        fp.write('<html><body>')
+        for article in articles:
+            fp.write(
+                '<a href="{id}.html">{id}</a>'.format(
+                    id=article['id'],
+                )
+            )
+        fp.write('</body></html>')
+
 
 def download_article(article):
     resp = requests.get(article['url'])
     resp.raise_for_status()
-    filename = '{}.html'.format(article['id'])
+    filename = BUILD / '{}.html'.format(article['id'])
 
-    with open(filename, 'w') as fp:
+    with open(str(filename), 'w') as fp:
         fp.write(resp.text)
 
 
